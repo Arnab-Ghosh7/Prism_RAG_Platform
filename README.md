@@ -49,6 +49,9 @@ graph TD
 
 ## ⚡ Core Features
 ### 1. Metacognitive Confidence Adjustment
+LLMs are notoriously overconfident, even when wrong. PRISM mitigates this by scaling the raw LLM confidence using the RAG retrieval quality score:
+$$\text{Confidence}_{\text{adjusted}} = \text{Confidence}_{\text{raw}} \times \left(0.5 + 0.5 \times \text{Confidence}_{\text{retrieval}}\right)$$
+This ensures that answers backed by rich, highly relevant local context are prioritized, while answers relying on sparse retrieval are flagged as low confidence.
 
 
 ### 2. The Rumsfeld / Johari Matrix Classification
