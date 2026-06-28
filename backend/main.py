@@ -13,7 +13,10 @@ app.add_middleware(
     allow_methods=["*"], allow_headers=["*"],
 )
 
-engine = PrismEngine(api_key=os.environ.get("OPENAI_API_KEY", "sk-..."))
+engine = PrismEngine(
+    openai_api_key=os.environ.get("OPENAI_API_KEY", ""),
+    anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
+)
 
 @app.post("/api/query")
 async def query_prism(data: PRISMQuery):

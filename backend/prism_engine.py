@@ -1,7 +1,21 @@
-import json, time, hashlib
+import json, time, hashlib, logging
 from typing import Dict, Optional, List
-from openai import AsyncOpenAI
 from pydantic import BaseModel
+
+# LLM clients are optional — the engine falls back to a safe Mock Mode if the
+# selected provider's SDK (or API key) is missing.
+try:
+    from anthropic import AsyncAnthropic
+    ANTHROPIC_AVAILABLE = True
+except Exception:
+    ANTHROPIC_AVAILABLE = False
+
+try:
+    from openai import AsyncOpenAI
+    OPENAI_AVAILABLE = True
+except Exception:
+    OPENAI_AVAILABLE = False
+
 from rag_engine import RAGEngine
 from calibration import CalibrationTracker
 from failure_miner import FailurePatternMiner
@@ -18,15 +32,43 @@ class PRISMIngest(BaseModel):
     texts: List[str]
     metadatas: List[Dict]
 
+def _is_valid_key(key: Optional[str]) -> bool:
+    """A key counts as real only if it's set and not a placeholder."""
+    if not key:
+        return False
+    k = key.strip()
+    if k in ("", "sk-...", "sk-ant-..."):
+        return False
+    return "placeholder" not in k.lower()
+
+
 class PrismEngine:
-    def __init__(self, api_key: str):
-        self.api_key = api_key
-        # Run in mock mode if API key is not set or is the placeholder value
-        self.mock_mode = (not api_key) or api_key == "sk-..." or api_key == "" or "placeholder" in api_key.lower()
-        if not self.mock_mode:
-            self.llm = AsyncOpenAI(api_key=api_key)
-        else:
-            self.llm = None
+    def __init__(self, openai_api_key: Optional[str] = None, anthropic_api_key: Optional[str] = None):
+        self.openai_api_key = openai_api_key
+        self.anthropic_api_key = anthropic_api_key
+
+        # Provider selection: Anthropic (Claude) is preferred when its key is
+        # present, then OpenAI, otherwise a safe offline Mock Mode.
+        self.provider = "mock"
+        self.model = None
+        self.llm = None
+
+        if _is_valid_key(anthropic_api_key) and ANTHROPIC_AVAILABLE:
+            self.provider = "anthropic"
+            self.model = "claude-opus-4-8"
+            self.llm = AsyncAnthropic(api_key=anthropic_api_key)
+        elif _is_valid_key(anthropic_api_key) and not ANTHROPIC_AVAILABLE:
+            logging.warning("ANTHROPIC_API_KEY set but the 'anthropic' package is not installed. "
+                            "Run `pip install anthropic`. Falling back to Mock Mode.")
+        elif _is_valid_key(openai_api_key) and OPENAI_AVAILABLE:
+            self.provider = "openai"
+            self.model = "gpt-4"
+            self.llm = AsyncOpenAI(api_key=openai_api_key)
+        elif _is_valid_key(openai_api_key) and not OPENAI_AVAILABLE:
+            logging.warning("OPENAI_API_KEY set but the 'openai' package is not installed. "
+                            "Falling back to Mock Mode.")
+
+        self.mock_mode = self.provider == "mock"
         self.rag = RAGEngine()
         self.calibration = CalibrationTracker()
         self.failure_miner = FailurePatternMiner()
@@ -54,14 +96,35 @@ class PrismEngine:
                 "reasoning": "Generated in safe mock mode without OpenAI API key.",
                 "domain": "general"
             }
-        else:
+        elif self.provider == "anthropic":
+            gen_prompt = (
+                "Answer the question based only on the provided context. "
+                "If the context doesn't contain the answer, say so.\n\n"
+                f"Context: {context}\n\n"
+                f"Question: {query}\n\n"
+                'Respond with ONLY a JSON object (no markdown, no prose) of the form: '
+                '{"answer": "...", "raw_confidence": 0.0-1.0, "reasoning": "...", "domain": "..."}'
+            )
+            resp = await self.llm.messages.create(
+                model=self.model,
+                max_tokens=1024,
+                system="You are a careful retrieval-augmented assistant. Always reply with a single valid JSON object and nothing else.",
+                messages=[{"role": "user", "content": gen_prompt}],
+            )
+            raw_text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text").strip()
+            try:
+                gen = json.loads(raw_text)
+            except Exception:
+                gen = {"answer": raw_text, "raw_confidence": 0.5, "reasoning": "Model did not return valid JSON.", "domain": "unknown"}
+
+        else:  # openai
             gen_prompt = f"""Answer the question based on the provided context. If the context doesn't contain the answer, say so.
             Context: {context}
             Question: {query}
             Respond in JSON: {{{{"answer": "...", "raw_confidence": 0.0-1.0, "reasoning": "...", "domain": "..."}}}}"""
-            
+
             resp = await self.llm.chat.completions.create(
-                model="gpt-4", messages=[{"role": "user", "content": gen_prompt}], temperature=0.1
+                model=self.model, messages=[{"role": "user", "content": gen_prompt}], temperature=0.1
             )
             try:
                 gen = json.loads(resp.choices[0].message.content)
@@ -97,7 +160,9 @@ class PrismEngine:
             "predicted_accuracy": round(pred_acc, 3),
             "second_order_confidence": round(soc, 3),
             "cognitive_quadrant": quad,
-            "calibration_error": round(self.calibration.expected_calibration_error(), 3)
+            "calibration_error": round(self.calibration.expected_calibration_error(), 3),
+            "provider": self.provider,
+            "model": self.model or "mock"
         }
 
     def feedback(self, interaction_id: str, accuracy: float):
@@ -109,6 +174,8 @@ class PrismEngine:
             
     def status(self):
         return {
+            "provider": self.provider,
+            "model": self.model or "mock",
             "calibration_curve": self.calibration.get_calibration_curve(),
             "cognitive_map": self.cognitive_map.get_summary(),
             "vulnerabilities": self.failure_miner.get_vulnerability_report()

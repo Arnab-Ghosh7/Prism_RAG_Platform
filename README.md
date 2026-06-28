@@ -126,9 +126,11 @@ Make sure you have the following installed:
 
 4. Create a `.env` file in the `backend/` directory:
    ```env
+   # Set ONE of these. Anthropic (Claude) takes priority if both are set.
+   ANTHROPIC_API_KEY=your_anthropic_api_key_here
    OPENAI_API_KEY=your_openai_api_key_here
    ```
-   *Note: If `OPENAI_API_KEY` is not provided or remains default, PRISM automatically starts in a secure **Mock Mode** for evaluation.*
+   *Note: If neither key is provided (or both remain blank/placeholder), PRISM automatically starts in a secure **Mock Mode** for evaluation. When `ANTHROPIC_API_KEY` is set, generation runs on **Claude (`claude-opus-4-8`)**; otherwise it falls back to OpenAI GPT-4. The active provider is reported in the `/api/status` and `/api/query` responses (`provider` / `model` fields).*
 
 5. Start the backend FastAPI server:
    ```bash
