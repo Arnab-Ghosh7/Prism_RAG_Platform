@@ -1,11 +1,4 @@
-# ◆ PRISM RAG Platform
-> **P**latform for **R**etrieval-augmented generation with **I**nteractive **S**elf-aware **M**etacognition
 
-[![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/Frontend-React%2018-61DAFB?style=flat-square&logo=react&logoColor=black)](https://reactjs.org/)
-[![Vite](https://img.shields.io/badge/Build-Vite-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
-[![ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-fc60a8?style=flat-square)](https://www.trychroma.com/)
-[![OpenAI](https://img.shields.io/badge/LLM-GPT--4-412991?style=flat-square&logo=openai&logoColor=white)](https://openai.com/)
 
 **PRISM** is a cutting-edge Retrieval-Augmented Generation (RAG) platform designed to bridge the gap between LLM hallucination and system self-awareness. By layering a metacognitive evaluation engine over retrieved context and generation confidence, PRISM dynamically assesses the reliability of its responses, visualizes its own cognitive health in real-time, and calibrates itself based on interactive user feedback.
 
