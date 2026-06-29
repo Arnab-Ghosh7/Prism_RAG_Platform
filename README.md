@@ -77,7 +77,12 @@ The **Failure Pattern Miner** runs in the background to detect systematic failur
 
 ## 🛠️ Tech Stack & Architecture
 
-
+### Backend (`/backend`)
+*   **FastAPI**: Ultra-fast asynchronous REST API endpoints.
+*   **ChromaDB**: Native vector database used for context storage and semantic retrieval (with an automatic in-memory keyword-matching fallback if dependencies are missing).
+*   **OpenAI GPT-4**: Standard LLM generation client (with a simulated Mock Mode for offline/API-key-free execution).
+*   **NumPy**: Mathematical operations for calibration curve statistics.
+*   **Pydantic**: Robust schema-based request validation.
 
 ### Frontend (`/frontend`)
 *   **React (Vite)**: Modern, lightning-fast component assembly.
