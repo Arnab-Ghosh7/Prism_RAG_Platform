@@ -1,6 +1,6 @@
 import json, time, hashlib, logging
 from typing import Dict, Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 # LLM clients are optional — the engine falls back to a safe Mock Mode if the
 # selected provider's SDK (or API key) is missing.
@@ -22,15 +22,21 @@ from failure_miner import FailurePatternMiner
 from cognitive_map import CognitiveMap
 
 class PRISMQuery(BaseModel):
-    query: str
+    query: str = Field(min_length=1, max_length=10_000)
 
 class PRISMFeedback(BaseModel):
     interaction_id: str
-    accuracy: float
+    accuracy: float = Field(ge=0.0, le=1.0)
 
 class PRISMIngest(BaseModel):
-    texts: List[str]
-    metadatas: List[Dict]
+    texts: List[str] = Field(min_length=1)
+    metadatas: List[Dict] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def metadata_matches_texts(self):
+        if len(self.texts) != len(self.metadatas):
+            raise ValueError("texts and metadatas must contain the same number of items")
+        return self
 
 def _is_valid_key(key: Optional[str]) -> bool:
     """A key counts as real only if it's set and not a placeholder."""
