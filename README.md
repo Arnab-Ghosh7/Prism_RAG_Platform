@@ -126,7 +126,7 @@ Make sure you have the following installed:
    pip install -r requirements.txt
    ```
 
-4. Create a `.env` file in the `backend/` directory:
+4. Create a `.env` file in the `backend/` directory (you can copy `backend/.env.example` as a starting point):
    ```env
    # Set ONE of these. Anthropic (Claude) takes priority if both are set.
    ANTHROPIC_API_KEY=your_anthropic_api_key_here
