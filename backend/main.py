@@ -20,6 +20,10 @@ engine = PrismEngine(
     anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY", ""),
 )
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok", "provider": engine.provider, "model": engine.model or "mock"}
+
 @app.post("/api/query")
 async def query_prism(data: PRISMQuery):
     return await engine.process(data.query)
