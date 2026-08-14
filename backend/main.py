@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from prism_engine import PrismEngine, PRISMQuery, PRISMFeedback, PRISMIngest
 import os
@@ -39,6 +39,9 @@ async def query_prism(data: PRISMQuery):
 
 @app.post("/api/feedback", tags=["feedback"])
 async def give_feedback(data: PRISMFeedback):
+    if data.interaction_id not in engine.interactions:
+        raise HTTPException(status_code=404, detail="Interaction not found")
+
     engine.feedback(data.interaction_id, data.accuracy)
     return {"status": "recorded"}
 
